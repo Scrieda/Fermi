@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kalkulator Fermi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .title {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 30px;
+            color: #2e7d32;
+            font-size: 2.5em;
+            font-weight: bold;
+            border-bottom: 3px solid #4CAF50;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .input-section, .result-section {
+            flex: 1;
+        }
+        .input-group {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .hint {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 3px;
+        }
+        .result-box {
+            background-color: #e8f5e9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .funnel {
+            margin: 20px 0;
+        }
+        .funnel-step {
+            margin: 10px 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .funnel-step:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .monthly .funnel-step:nth-child(1) { width: 100%; }
+        .monthly .funnel-step:nth-child(2) { width: 80%; margin-left: 10%; }
+        .monthly .funnel-step:nth-child(3) { width: 60%; margin-left: 20%; }
+        
+        .daily .funnel-step:nth-child(1) { width: 100%; }
+        .daily .funnel-step:nth-child(2) { width: 80%; margin-left: 10%; }
+        .daily .funnel-step:nth-child(3) { width: 60%; margin-left: 20%; }
+        
+        .analysis {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .warning {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">📊 Kalkulator Fermi</div>
+    
+    <div class="container">
+        <div class="input-section">
+            <div class="input-group">
+                <label>Target Pendapatan Bersih per Bulan (Rp):</label>
+                <input type="text" id="targetPendapatan" value="3.000.000" 
+                       oninput="this.value = formatNumber(this.value); updateCalculations();">
+                <div class="hint">Masukkan angka tanpa Rp atau simbol lain</div>
+            </div>
+
+            <div class="input-group">
+                <label>Harga Produk (Rp):</label>
+                <input type="text" id="hargaProduk" value="50.000"
+                       oninput="this.value = formatNumber(this.value); updateCalculations();">
+            </div>
+
+            <div class="input-group">
+                <label>Biaya Operasional (Non-Iklan) per Bulan (Rp):</label>
+                <input type="text" id="biayaOperasional" value="800.000"
+                       oninput="this.value = formatNumber(this.value); updateCalculations();">
+            </div>
+
+            <div class="input-group">
+                <label>Platform Iklan:</label>
+                <select id="platformIklan" onchange="updateCPM(); updateCalculations();">
+                    <option value="20000">Facebook/Instagram (CPM: Rp 20.000)</option>
+                    <option value="15000">TikTok (CPM: Rp 15.000)</option>
+                    <option value="25000">Google Ads (CPM: Rp 25.000)</option>
+                    <option value="custom">Custom CPM</option>
+                </select>
+                <div id="customCPMDiv" style="display: none;">
+                    <label>Custom CPM (Rp):</label>
+                    <input type="text" id="customCPM" value="20.000"
+                           oninput="this.value = formatNumber(this.value); updateCalculations();">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <h3>Tingkat Konversi:</h3>
+                <label>View ke Interest (%):</label>
+                <input type="number" id="konversiInterest" value="3" max="100" min="0" step="0.1"
+                       oninput="updateCalculations();">
+                <div class="hint">Benchmark industri: 2-5% (dari 100 orang yang lihat, 2-5 orang tertarik)</div>
+
+                <label>Interest ke Purchase (%):</label>
+                <input type="number" id="konversiPurchase" value="20" max="100" min="0" step="0.1"
+                       oninput="updateCalculations();">
+                <div class="hint">Benchmark industri: 15-25% (dari yang tertarik, 15-25% membeli)</div>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <div class="result-box">
+                <h3>Perhitungan Finansial</h3>
+                <p>Total kebutuhan: <span id="totalKebutuhan" class="highlight">0</span></p>
+                <p>Biaya iklan per bulan: <span id="biayaIklan" class="highlight">0</span></p>
+                <p>Cost per Acquisition (CPA): <span id="cpa" class="highlight">0</span></p>
+                <p>ROI iklan: <span id="roiIklan" class="highlight">0</span></p>
+            </div>
+
+            <div class="result-box">
+                <h3>Visual Funnel Bulanan</h3>
+                <div class="funnel monthly">
+                    <div class="funnel-step">
+                        Views yang diperlukan: <span id="viewsCount">0</span>
+                    </div>
+                    <div class="funnel-step">
+                        Target interest/bertanya: <span id="interestCount">0</span>
+                    </div>
+                    <div class="funnel-step">
+                        Target pembelian: <span id="purchaseCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-box">
+                <h3>Target Harian</h3>
+                <div class="funnel daily">
+                    <div class="funnel-step">
+                        Views per hari: <span id="dailyViews">0</span>
+                    </div>
+                    <div class="funnel-step">
+                        Interest per hari: <span id="dailyInterest">0</span>
+                    </div>
+                    <div class="funnel-step">
+                        Sales per hari: <span id="dailySales">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-box">
+                <h3>Analisis Kelayakan</h3>
+                <div id="analysisResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatNumber(num) {
+            num = num.replace(/\D/g, '');
+            return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function unformatNumber(str) {
+            return Number(str.replace(/\./g, ''));
+        }
+
+        function updateCPM() {
+            const platform = document.getElementById('platformIklan');
+            const customDiv = document.getElementById('customCPMDiv');
+            customDiv.style.display = platform.value === 'custom' ? 'block' : 'none';
+        }
+
+        function getCPM() {
+            const platform = document.getElementById('platformIklan');
+            if (platform.value === 'custom') {
+                return unformatNumber(document.getElementById('customCPM').value);
+            }
+            return Number(platform.value);
+        }
+
+        function hitungKebutuhanBisnis(targetBersih, hargaProduk, biayaOperasional, cpm, konversiInterest, konversiPurchase) {
+            const konversiTotal = konversiInterest * konversiPurchase;
+            let estimate = targetBersih + biayaOperasional;
+            let iterations = 0;
+            let prevUnit = 0;
+            let unit = Math.ceil(estimate / hargaProduk);
+            
+            while (prevUnit !== unit && iterations < 10) {
+                prevUnit = unit;
+                const viewsNeeded = Math.ceil(unit / konversiTotal);
+                const biayaIklan = Math.ceil((viewsNeeded / 1000) * cpm);
+                estimate = targetBersih + biayaOperasional + biayaIklan;
+                unit = Math.ceil(estimate / hargaProduk);
+                iterations++;
+            }
+            
+            const viewsNeeded = Math.ceil(unit / konversiTotal);
+            const biayaIklan = Math.ceil((viewsNeeded / 1000) * cpm);
+            const pendapatanKotor = unit * hargaProduk;
+            const pendapatanBersih = pendapatanKotor - biayaOperasional - biayaIklan;
+            
+            return {
+                unit,
+                viewsNeeded,
+                biayaIklan,
+                pendapatanKotor,
+                pendapatanBersih,
+                totalKebutuhan: pendapatanKotor,
+                cpa: Math.ceil(biayaIklan / unit)
+            };
+        }
+
+        function updateAnalysis(hasil, konversiInterest, konversiPurchase, hargaProduk) {
+            let analysis = [];
+            
+            // Analyze CPA ratio
+            const cpaRatio = (hasil.cpa / hargaProduk) * 100;
+            if (cpaRatio <= 30) {
+                analysis.push(`<div class="analysis success">✅ CPA masih efisien (${Math.round(cpaRatio)}% dari harga produk)</div>`);
+            } else {
+                analysis.push(`<div class="analysis warning">⚠️ CPA terlalu tinggi (${Math.round(cpaRatio)}% dari harga produk)</div>`);
+            }
+
+            // Analyze ROI
+            const roiRatio = ((hasil.pendapatanKotor - hasil.biayaIklan) / hasil.biayaIklan) * 100;
+            if (roiRatio >= 200) {
+                analysis.push(`<div class="analysis success">✅ ROI iklan sangat baik (${Math.round(roiRatio)}%)</div>`);
+            } else if (roiRatio >= 100) {
+                analysis.push(`<div class="analysis success">✅ ROI iklan cukup (${Math.round(roiRatio)}%)</div>`);
+            } else {
+                analysis.push(`<div class="analysis warning">⚠️ ROI iklan rendah (${Math.round(roiRatio)}%)</div>`);
+            }
+
+            // Analyze conversion rates
+            if (konversiInterest >= 0.02 && konversiInterest <= 0.05) {
+                analysis.push(`<div class="analysis success">✅ Konversi view ke interest sesuai benchmark</div>`);
+            } else {
+                analysis.push(`<div class="analysis warning">⚠️ Konversi view ke interest perlu disesuaikan (2-5%)</div>`);
+            }
+
+            if (konversiPurchase >= 0.15 && konversiPurchase <= 0.25) {
+                analysis.push(`<div class="analysis success">✅ Konversi interest ke purchase sesuai benchmark</div>`);
+            } else {
+                analysis.push(`<div class="analysis warning">⚠️ Konversi interest ke purchase perlu disesuaikan (15-25%)</div>`);
+            }
+
+            document.getElementById('analysisResults').innerHTML = analysis.join('');
+        }
+
+        function updateCalculations() {
+            const targetPendapatan = unformatNumber(document.getElementById('targetPendapatan').value);
+            const hargaProduk = unformatNumber(document.getElementById('hargaProduk').value);
+            const biayaOperasional = unformatNumber(document.getElementById('biayaOperasional').value);
+            const konversiInterest = Number(document.getElementById('konversiInterest').value) / 100;
+            const konversiPurchase = Number(document.getElementById('konversiPurchase').value) / 100;
+            const cpm = getCPM();
+
+            const hasil = hitungKebutuhanBisnis(
+                targetPendapatan,
+                hargaProduk,
+                biayaOperasional,
+                cpm,
+                konversiInterest,
+                konversiPurchase
+            );
+
+            // Update UI
+            document.getElementById('totalKebutuhan').textContent = 'Rp ' + formatNumber(hasil.totalKebutuhan.toString());
+            document.getElementById('biayaIklan').textContent = 'Rp ' + formatNumber(hasil.biayaIklan.toString());
+            document.getElementById('cpa').textContent = 'Rp ' + formatNumber(hasil.cpa.toString());
+            document.getElementById('roiIklan').textContent = 'Rp ' + formatNumber((hasil.pendapatanKotor - hasil.biayaIklan).toString());
+
+            // Update funnel values
+            document.getElementById('viewsCount').textContent = formatNumber(hasil.viewsNeeded.toString());
+            document.getElementById('interestCount').textContent = formatNumber(Math.ceil(hasil.viewsNeeded * konversiInterest).toString());
+            document.getElementById('purchaseCount').textContent = formatNumber(hasil.unit.toString());
+
+            // Update daily targets
+            document.getElementById('dailyViews').textContent = formatNumber(Math.ceil(hasil.viewsNeeded / 30).toString());
+            document.getElementById('dailyInterest').textContent = formatNumber(Math.ceil((hasil.viewsNeeded * konversiInterest) / 30).toString());
+            document.getElementById('dailySales').textContent = Math.ceil(hasil.unit / 30);
+
+            // Update analysis
+            updateAnalysis(hasil, konversiInterest, konversiPurchase, hargaProduk);
+        }
+
+        // Initialize calculations when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCalculations();
+        });
+    </script>
+</body>
+</html>
